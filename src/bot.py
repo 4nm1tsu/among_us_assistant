@@ -10,11 +10,13 @@ client = discord.Client()
 TOKEN: str = ""
 
 USAGE_DOUBT = "/doubt {source|optional} {target}"
+USAGE_TRUST = "/trust {source|optional} {target}"
 
 ERROR_ROLE_NOT_FOUND = "role not found."
 ERROR_DUPLICATE_ROLE = "duplicate role."
 ERROR_TOO_FEW_ARGUMENTS = "too few arguments."
 ERROR_TOO_MANY_ARGUMENTS = "too many arguments."
+ERROR_NOT_ATTENDEE = "specified member is not attendee."
 
 TRUST = 0
 DOUBT = 1
@@ -106,19 +108,18 @@ def draw_graph():
     }
     pos = graphviz_layout(G, prog="fdp")
     nx.draw_networkx(G, pos, connectionstyle="arc3, rad=0.1", arrows=True, **options, font_size=14)
-    # plt.subplots_adjust(left=0.075, bottom=0.05, right=0.95, top=0.95, wspace=0.15, hspace=0.15)
     plt.tight_layout(pad=0)
     plt.savefig("figure.png")
     return discord.File("figure.png")
 
 
-def get_doubt_usage(error=None):
+def get_usage(usage, error=None):
     if error:
         embed = discord.Embed(title="Error", description=error, color=0xFF0000)
-        embed.add_field(name="usage", value=USAGE_DOUBT)
+        embed.add_field(name="usage", value=usage)
     else:
         embed = discord.Embed(
-            title="usage", description=USAGE_DOUBT, color=0x00FF00)
+            title="usage", description=usage, color=0x00FF00)
     return embed
 
 
@@ -149,6 +150,16 @@ def add_relation(source, target, type):
     relations[(s, t)] = type
 
 
+def find_attendee_by_name(attendees, name):
+    attendee = None
+    for a in attendees:
+        for r in a.roles:
+            if name == r.name:
+                attendee = a
+    return attendee
+
+
+
 @bot.command()
 async def name(ctx, *args):
     pass
@@ -156,28 +167,22 @@ async def name(ctx, *args):
 
 @bot.command()
 async def trust(ctx, *args):
-    pass
-
-
-
-@bot.command()
-async def doubt(ctx, *args):
     if len(args) == 0:
-        await ctx.send(embed=get_doubt_usage(ERROR_TOO_FEW_ARGUMENTS))
+        await ctx.send(embed=get_usage(USAGE_TRUST, ERROR_TOO_FEW_ARGUMENTS))
         return
     if len(args) > 2:
-        await ctx.send(embed=get_doubt_usage(ERROR_TOO_MANY_ARGUMENTS))
+        await ctx.send(embed=get_usage(USAGE_TRUST, ERROR_TOO_MANY_ARGUMENTS))
         return
     roles = []
     for arg in args:
         r = discord.utils.get(ctx.guild.roles, name=arg)
         if not r:
-            await ctx.send(embed=get_doubt_usage(ERROR_ROLE_NOT_FOUND))
+            await ctx.send(embed=get_usage(USAGE_TRUST, ERROR_ROLE_NOT_FOUND))
             return
         else:
             roles.append(r)
     if has_duplicates(roles):
-        await ctx.send(embed=get_doubt_usage(ERROR_DUPLICATE_ROLE))
+        await ctx.send(embed=get_usage(USAGE_TRUST, ERROR_DUPLICATE_ROLE))
         return
 
     # TODO decorator化
@@ -190,30 +195,72 @@ async def doubt(ctx, *args):
 
     if len(args) == 1:
         source = discord.utils.find(lambda m: m.name == ctx.author.name, attendees)
-        target = None
-        for a in attendees:
-            for r in a.roles:
-                if args[0] == r.name:
-                    target = a
+        target = find_attendee_by_name(attendees, args[0])
         try:
-            add_relation(source, target, DOUBT)
+            add_relation(source, target, TRUST)
         except:
-            print("hogehoge")
+            await ctx.send(embed=get_usage(USAGE_TRUST, ERROR_NOT_ATTENDEE))
+            return
         await ctx.send(file=draw_graph())
         return
     else:
-        source = None
-        target = None
-        for a in attendees:
-            for r in a.roles:
-                if args[1] == r.name:
-                    target = a
-                if args[0] == r.name:
-                    source = a
+        source = find_attendee_by_name(attendees, args[0])
+        target = find_attendee_by_name(attendees, args[1])
+        try:
+            add_relation(source, target, TRUST)
+        except:
+            await ctx.send(embed=get_usage(USAGE_TRUST, ERROR_NOT_ATTENDEE))
+            return
+        await ctx.send(file=draw_graph())
+        return
+
+
+
+@bot.command()
+async def doubt(ctx, *args):
+    if len(args) == 0:
+        await ctx.send(embed=get_usage(USAGE_DOUBT, ERROR_TOO_FEW_ARGUMENTS))
+        return
+    if len(args) > 2:
+        await ctx.send(embed=get_usage(USAGE_DOUBT, ERROR_TOO_MANY_ARGUMENTS))
+        return
+    roles = []
+    for arg in args:
+        r = discord.utils.get(ctx.guild.roles, name=arg)
+        if not r:
+            await ctx.send(embed=get_usage(USAGE_DOUBT, ERROR_ROLE_NOT_FOUND))
+            return
+        else:
+            roles.append(r)
+    if has_duplicates(roles):
+        await ctx.send(embed=get_usage(USAGE_DOUBT, ERROR_DUPLICATE_ROLE))
+        return
+
+    # TODO decorator化
+    members = [i async for i in ctx.guild.fetch_members(limit=150) if not i.bot]
+    attendees = [i for i in members if is_attendee(i)]
+    for a in attendees:
+        role = [i for i in a.roles if i.name != "@everyone" and i.name != "attendees"][0]
+        if not players.get(a):
+            players[a] = Player(a.name, role.name)
+
+    if len(args) == 1:
+        source = discord.utils.find(lambda m: m.name == ctx.author.name, attendees)
+        target = find_attendee_by_name(attendees, args[0])
         try:
             add_relation(source, target, DOUBT)
         except:
-            print("hogehoge")
+            await ctx.send(embed=get_usage(USAGE_DOUBT, ERROR_NOT_ATTENDEE))
+            return
+        await ctx.send(file=draw_graph())
+        return
+    else:
+        source = find_attendee_by_name(attendees, args[0])
+        target = find_attendee_by_name(attendees, args[1])
+        try:
+            add_relation(source, target, DOUBT)
+        except:
+            await ctx.send(embed=get_usage(USAGE_DOUBT, ERROR_NOT_ATTENDEE))
             return
         await ctx.send(file=draw_graph())
         return
