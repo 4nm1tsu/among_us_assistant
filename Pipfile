@@ -1,0 +1,20 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+"discord.py" = "*"
+pygraphviz = "*"
+networkx = "*"
+matplotlib = "*"
+
+[dev-packages]
+black = "*"
+flake8 = "*"
+flake8-import-order = "*"
+autopep8 = "*"
+isort = "*"
+
+[requires]
+python_version = "3.9"
