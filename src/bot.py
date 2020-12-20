@@ -166,6 +166,27 @@ async def name(ctx, *args):
 
 
 @bot.command()
+async def clear(ctx, *args):
+    global players
+    global relations
+    plt.clf()
+    edges = []
+    nodes = []
+    for r in relations.keys():
+        edges.append(r)
+    nodes = []
+    for p in players.values():
+        nodes.append(p)
+    G.remove_edges_from(edges)
+    G.remove_nodes_from(nodes)
+    players = {}
+    relations = {}
+    embed = discord.Embed(title="clear", description="graph has been cleared", color=0x00FF00)
+    await ctx.send(embed=embed)
+    return
+
+
+@bot.command()
 async def trust(ctx, *args):
     if len(args) == 0:
         await ctx.send(embed=get_usage(USAGE_TRUST, ERROR_TOO_FEW_ARGUMENTS))
@@ -270,3 +291,4 @@ bot.run(TOKEN)
 # TODO コグでまとめる
 # TODO 例外処理をdiscord.pyのビルトインで
 # TODO unknown command
+# TODO command not found
