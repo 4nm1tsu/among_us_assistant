@@ -5,7 +5,7 @@ from discord.ext import commands
 from networkx.drawing.nx_agraph import graphviz_layout
 
 
-class Player():
+class Player:
     def __init__(self, name, color):
         self.name = name
         self.color = color
@@ -101,8 +101,9 @@ def draw_graph():
         "arrowsize": 20,
     }
     pos = graphviz_layout(G, prog="fdp")
-    nx.draw_networkx(G, pos, connectionstyle="arc3, rad=0.1",
-                     arrows=True, **options, font_size=14)
+    nx.draw_networkx(
+        G, pos, connectionstyle="arc3, rad=0.1", arrows=True, **options, font_size=14
+    )
     plt.tight_layout(pad=0)
     plt.savefig("figure.png")
     return discord.File("figure.png")
@@ -113,8 +114,7 @@ def get_usage(usage, error=None):
         embed = discord.Embed(title="Error", description=error, color=0xFF0000)
         embed.add_field(name="usage", value=usage)
     else:
-        embed = discord.Embed(
-            title="usage", description=usage, color=0x00FF00)
+        embed = discord.Embed(title="usage", description=usage, color=0x00FF00)
     return embed
 
 
@@ -127,6 +127,7 @@ def update_attendees(func):
         # ctx.g
         # attendees ロールのついている人をみてplayersを更新
         func(*args, **kwargs)
+
     return wrapper
 
 
@@ -176,7 +177,8 @@ class Assistant(commands.Cog):
         players = {}
         relations = {}
         embed = discord.Embed(
-            title="clear", description="graph has been cleared", color=0x00FF00)
+            title="clear", description="graph has been cleared", color=0x00FF00
+        )
         await ctx.send(embed=embed)
         return
 
@@ -204,13 +206,13 @@ class Assistant(commands.Cog):
         members = [i async for i in ctx.guild.fetch_members(limit=150) if not i.bot]
         attendees = [i for i in members if is_attendee(i)]
         for a in attendees:
-            role = [i for i in a.roles if i.name !=
-                    "@everyone" and i.name != "attendees"][0]
+            role = [
+                i for i in a.roles if i.name != "@everyone" and i.name != "attendees"
+            ][0]
             if not players.get(a):
                 players[a] = Player(a.name, role.name)
         if len(args) == 1:
-            source = discord.utils.find(
-                lambda m: m.name == ctx.author.name, attendees)
+            source = discord.utils.find(lambda m: m.name == ctx.author.name, attendees)
             target = find_attendee_by_name(attendees, args[0])
             try:
                 add_relation(source, target, TRUST)
@@ -253,13 +255,13 @@ class Assistant(commands.Cog):
         members = [i async for i in ctx.guild.fetch_members(limit=150) if not i.bot]
         attendees = [i for i in members if is_attendee(i)]
         for a in attendees:
-            role = [i for i in a.roles if i.name !=
-                    "@everyone" and i.name != "attendees"][0]
+            role = [
+                i for i in a.roles if i.name != "@everyone" and i.name != "attendees"
+            ][0]
             if not players.get(a):
                 players[a] = Player(a.name, role.name)
         if len(args) == 1:
-            source = discord.utils.find(
-                lambda m: m.name == ctx.author.name, attendees)
+            source = discord.utils.find(lambda m: m.name == ctx.author.name, attendees)
             target = find_attendee_by_name(attendees, args[0])
             try:
                 add_relation(source, target, DOUBT)
