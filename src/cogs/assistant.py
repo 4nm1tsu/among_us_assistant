@@ -33,6 +33,8 @@ DOUBT = 1
 G = nx.DiGraph()
 players = {}  # {discord.Member: Player}
 relations = {}  # {(discord.Member, discord.Member): int}
+plt.rcParams['font.family'] = "sans-serif"
+plt.rcParams['font.sans-serif'] = ['Hiragino Maru Gothic Pro', 'Yu Gothic', 'Meirio', 'Takao', 'IPAexGothic', 'IPAPGothic', 'VL PGothic', 'Noto Sans CJK JP']
 
 
 def node_color(player: Player)-> str:
