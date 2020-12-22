@@ -5,7 +5,7 @@ from discord.ext import commands
 
 import cogs.assistant as assistant
 
-bot = commands.Bot(command_prefix="/")
+bot:commands.Bot = commands.Bot(command_prefix="/")
 
 client = discord.Client()
 
