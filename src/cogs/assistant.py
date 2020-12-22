@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from discord.ext import commands
 from networkx.drawing.nx_agraph import graphviz_layout
+from typing import Optional, List
 
 
 class Player:
@@ -34,7 +35,7 @@ players = {}  # {discord.Member: Player}
 relations = {}  # {(discord.Member, discord.Member): int}
 
 
-def node_color(player):
+def node_color(player: Player)-> str:
     """
     ノードカラーのマッピング
     """
@@ -65,7 +66,7 @@ def node_color(player):
     return "black"
 
 
-def edge_color(relation):
+def edge_color(relation: int)-> str:
     """
     エッジカラーのマッピング
     """
@@ -76,7 +77,7 @@ def edge_color(relation):
     return "black"
 
 
-def draw_graph():
+def draw_graph()-> discord.File:
     """
     グラフ描画
     """
@@ -109,7 +110,7 @@ def draw_graph():
     return discord.File("figure.png")
 
 
-def get_usage(usage, error=None):
+def get_usage(usage: str, error: str=None)-> discord.Embed:
     if error:
         embed = discord.Embed(title="Error", description=error, color=0xFF0000)
         embed.add_field(name="usage", value=usage)
@@ -118,7 +119,7 @@ def get_usage(usage, error=None):
     return embed
 
 
-def has_duplicates(seq: list):
+def has_duplicates(seq: list)-> bool:
     return len(seq) != len(set(seq))
 
 
@@ -131,14 +132,14 @@ def update_attendees(func):
     return wrapper
 
 
-def is_attendee(member: discord.Member):
+def is_attendee(member: discord.Member)-> bool:
     for r in member.roles:
         if r.name == "attendees":
             return True
     return False
 
 
-def add_relation(source, target, type):
+def add_relation(source: discord.Member, target: discord.Member, type: int)-> None:
     if not source or not target or source == target:
         raise Exception
     s = players[source]
@@ -146,7 +147,7 @@ def add_relation(source, target, type):
     relations[(s, t)] = type
 
 
-def find_attendee_by_name(attendees, name):
+def find_attendee_by_name(attendees: List[discord.Member], name: str)-> Optional[discord.Member]:
     attendee = None
     for a in attendees:
         for r in a.roles:
@@ -281,5 +282,5 @@ class Assistant(commands.Cog):
         return
 
 
-def setup(bot):
+def setup(bot: commands.bot)-> None:
     bot.add_cog(Assistant(bot))
