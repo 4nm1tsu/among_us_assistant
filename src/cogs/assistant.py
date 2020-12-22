@@ -1,10 +1,10 @@
 from typing import List, Optional
-from error import DuplicateRoleError, NotAttendeeError
 
 import discord
 import matplotlib.pyplot as plt
 import networkx as nx
 from discord.ext import commands
+from error import DuplicateRoleError, NotAttendeeError
 from networkx.drawing.nx_agraph import graphviz_layout
 
 
@@ -154,7 +154,9 @@ def is_attendee(member: discord.Member) -> bool:
     return False
 
 
-def add_relation(source: Optional[discord.Member], target: Optional[discord.Member], type: int) -> None:
+def add_relation(
+    source: Optional[discord.Member], target: Optional[discord.Member], type: int
+) -> None:
     s = players[source]
     t = players[target]
     relations[(s, t)] = type
@@ -199,7 +201,9 @@ class Assistant(commands.Cog):
         return
 
     @commands.command()
-    async def trust(self, ctx, first_role: discord.Role, second_role: discord.Role=None):
+    async def trust(
+        self, ctx, first_role: discord.Role, second_role: discord.Role = None
+    ):
         if first_role == second_role:
             raise DuplicateRoleError
         # TODO decorator化
@@ -211,20 +215,29 @@ class Assistant(commands.Cog):
             ][0]
             players[a] = Player(a.name, role.name)
         if not second_role:
-            source: Optional[discord.Member] = discord.utils.find(lambda m: m.name == ctx.author.name, attendees)
-            target: Optional[discord.Member] = find_attendee_by_role(attendees, first_role.name)
+            source: Optional[discord.Member] = discord.utils.find(
+                lambda m: m.name == ctx.author.name, attendees
+            )
+            target: Optional[discord.Member] = find_attendee_by_role(
+                attendees, first_role.name
+            )
         else:
-            source: Optional[discord.Member] = find_attendee_by_role(attendees, first_role.name)
-            target: Optional[discord.Member] = find_attendee_by_role(attendees, second_role.name)
+            source: Optional[discord.Member] = find_attendee_by_role(
+                attendees, first_role.name
+            )
+            target: Optional[discord.Member] = find_attendee_by_role(
+                attendees, second_role.name
+            )
         if not source or not target:
             raise NotAttendeeError
         add_relation(source, target, TRUST)
         await ctx.send(file=draw_graph())
         return
 
-
     @commands.command()
-    async def doubt(self, ctx, first_role: discord.Role, second_role: discord.Role=None):
+    async def doubt(
+        self, ctx, first_role: discord.Role, second_role: discord.Role = None
+    ):
         if first_role == second_role:
             raise DuplicateRoleError
         # TODO decorator化
@@ -236,11 +249,19 @@ class Assistant(commands.Cog):
             ][0]
             players[a] = Player(a.name, role.name)
         if not second_role:
-            source: Optional[discord.Member] = discord.utils.find(lambda m: m.name == ctx.author.name, attendees)
-            target: Optional[discord.Member] = find_attendee_by_role(attendees, first_role.name)
+            source: Optional[discord.Member] = discord.utils.find(
+                lambda m: m.name == ctx.author.name, attendees
+            )
+            target: Optional[discord.Member] = find_attendee_by_role(
+                attendees, first_role.name
+            )
         else:
-            source: Optional[discord.Member] = find_attendee_by_role(attendees, first_role.name)
-            target: Optional[discord.Member] = find_attendee_by_role(attendees, second_role.name)
+            source: Optional[discord.Member] = find_attendee_by_role(
+                attendees, first_role.name
+            )
+            target: Optional[discord.Member] = find_attendee_by_role(
+                attendees, second_role.name
+            )
         if not source or not target:
             raise NotAttendeeError
         add_relation(source, target, DOUBT)
