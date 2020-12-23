@@ -4,7 +4,7 @@ import discord
 import matplotlib.pyplot as plt
 import networkx as nx
 from discord.ext import commands
-from error import DuplicateRoleError, NotAttendeeError, NoSuchRelationError, SpecifyYourselfError
+from error import DuplicateRoleError, NotAttendeeError, NoSuchRelationError, SpecifyYourselfError, NoPlayerError
 from networkx.drawing.nx_agraph import graphviz_layout
 
 
@@ -252,6 +252,9 @@ class Assistant(commands.Cog):
     @commands.command(brief="take stats.")
     async def stat(self, ctx, *args):
         [doubt_formatted, trust_formatted] = create_statistics(ctx)
+        if not doubt_formatted \
+            or not trust_formatted:
+            raise NoPlayerError
         embed = discord.Embed(
             title=":chart_with_upwards_trend:statistics", color=0x359cad)
         embed.add_field(name=":detective:doubtful",

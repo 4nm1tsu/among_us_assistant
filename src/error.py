@@ -20,3 +20,7 @@ class NoSuchRelationError(Exception):
 class SpecifyYourselfError(Exception):
     def __str__(self):
         return "don't specify yourself as a target."
+
+class NoPlayerError(Exception):
+    def __str__(self):
+        return "there's no players in the graph."
