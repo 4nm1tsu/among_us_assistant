@@ -266,8 +266,10 @@ class Assistant(commands.Cog):
         [source, target] = await parse_attendee(ctx, first_role, second_role)
         try:
             del relations[(players[source], players[target])]
+            G.remove_edge(players[source], players[target])
         except:
             raise NoSuchRelationError
+
         await ctx.send(file=draw_graph())
         return
 
