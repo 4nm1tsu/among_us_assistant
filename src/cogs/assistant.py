@@ -25,6 +25,7 @@ class Player:
         return self is other
 
 
+"""
 USAGE_DOUBT = "/doubt {source(optional)} {target}"
 USAGE_TRUST = "/trust {source(optional)} {target}"
 USAGE_CLEAR = "/clear [all|{source (optional)} {target}]"
@@ -36,6 +37,7 @@ ERROR_TOO_MANY_ARGUMENTS = "too many arguments."
 ERROR_NOT_ATTENDEE = "specified member is not attendee."
 ERROR_BAD_ARGUMENT = "bad argument."
 ERROR_COMMAND_INVOKE = "command invoke error."
+"""
 
 TRUST = 0
 DOUBT = 1
@@ -134,6 +136,12 @@ def draw_graph() -> discord.File:
     return discord.File("figure.png")
 
 
+def get_error_embed(error: str) -> discord.Embed:
+    embed = discord.Embed(title="Error", description=error, color=0xFF0000)
+    return embed
+
+
+"""
 def get_usage(usage: str, error: str = None) -> discord.Embed:
     if error:
         embed = discord.Embed(title="Error", description=error, color=0xFF0000)
@@ -141,6 +149,7 @@ def get_usage(usage: str, error: str = None) -> discord.Embed:
     else:
         embed = discord.Embed(title="usage", description=usage, color=0x00FF00)
     return embed
+"""
 
 
 def is_attendee(member: discord.Member) -> bool:
@@ -197,8 +206,22 @@ async def parse_attendee(
         target: Optional[discord.Member] = find_attendee_by_role(
             attendees, second_role.name
         )
-    if not source or not target:
-        raise NotAttendeeError
+    if not second_role:
+    # 引数1つかつ自分がnot attendee → author
+        if not source:
+            role = [i for i in ctx.author.roles if i.name !=
+                    "@everyone" and i.name != "attendees"][0]
+            raise NotAttendeeError(role.name)
+    # 引数1つかつ相手がnot attendee → first_role
+        if not target:
+            raise NotAttendeeError(first_role.name)
+    else:
+    # 引数2つかつ自分がnot attendee → first_role
+        if not source:
+            raise NotAttendeeError(first_role.name)
+    # 引数2つかつ相手がnot attendee → second_role
+        if not target:
+            raise NotAttendeeError(second_role.name)
     return [source, target]
 
 
@@ -225,7 +248,7 @@ class Assistant(commands.Cog):
     async def name(self, ctx, *args):
         pass
 
-    @commands.group(pass_context=True, invoke_without_command=True)
+    @commands.group(pass_context=True, invoke_without_command=True, brief="remove arrow from graph.")
     async def clear(self, ctx, first_role: discord.Role, second_role: discord.Role = None):
         [source, target] = await parse_attendee(ctx, first_role, second_role)
         try:
@@ -235,7 +258,7 @@ class Assistant(commands.Cog):
         await ctx.send(file=draw_graph())
         return
 
-    @clear.group()
+    @clear.group(brief="remove all nodes and arrows.")
     async def all(self, ctx):
         global players
         global relations
@@ -249,7 +272,7 @@ class Assistant(commands.Cog):
         await ctx.send(embed=embed)
         return
 
-    @commands.command()
+    @commands.command(brief="draw trust arrow to specified target.")
     async def trust(
         self, ctx: commands.Context, first_role: discord.Role, second_role: discord.Role = None
     ):
@@ -259,7 +282,7 @@ class Assistant(commands.Cog):
             raise e
         return
 
-    @commands.command()
+    @commands.command(brief="draw doubt arrow to specified target.")
     async def doubt(
         self, ctx: commands.Context, first_role: discord.Role, second_role: discord.Role = None
     ):
@@ -273,7 +296,11 @@ class Assistant(commands.Cog):
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandNotFound):
             await ctx.send_help()
+        else:
+            await ctx.send(embed=get_error_embed(str(error)))
+            print(ctx.invoked_with)
 
+    """
     @doubt.error
     async def doubt_error(self, ctx: commands.Context, error):
         print(type(error))
@@ -297,6 +324,7 @@ class Assistant(commands.Cog):
         if isinstance(error, commands.CommandInvokeError):
             await ctx.send(embed=get_usage(USAGE_CLEAR, str(error)))
     # MissingRequiredArgument
+    """
 
 
 def setup(bot: commands.Bot) -> None:
