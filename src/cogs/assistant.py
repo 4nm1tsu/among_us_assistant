@@ -169,7 +169,11 @@ def find_attendee_by_role(
     return attendee
 
 
-async def parse_attendee(ctx: commands.Context, first_role: discord.Role, second_role: Optional[discord.Role] = None):
+async def parse_attendee(
+    ctx: commands.Context,
+    first_role: discord.Role,
+    second_role: Optional[discord.Role] = None
+):
     if first_role == second_role:
         raise DuplicateRoleError
     members = [i async for i in ctx.guild.fetch_members(limit=150) if not i.bot]
@@ -214,6 +218,9 @@ async def draw_relation(
 
 
 class Assistant(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
     @commands.command()
     async def name(self, ctx, *args):
         pass
@@ -265,8 +272,7 @@ class Assistant(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandNotFound):
-            print("HERE")
-            commands.HelpCommand()
+            await ctx.send_help()
 
     @doubt.error
     async def doubt_error(self, ctx: commands.Context, error):
@@ -290,6 +296,7 @@ class Assistant(commands.Cog):
             await ctx.send(embed=get_usage(USAGE_CLEAR, str(error)))
         if isinstance(error, commands.CommandInvokeError):
             await ctx.send(embed=get_usage(USAGE_CLEAR, str(error)))
+    # MissingRequiredArgument
 
 
 def setup(bot: commands.Bot) -> None:
