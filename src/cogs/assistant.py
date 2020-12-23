@@ -20,8 +20,8 @@ class Player:
         return hash(self.name)
 
 
-USAGE_DOUBT = "/doubt {source|optional} {target}"
-USAGE_TRUST = "/trust {source|optional} {target}"
+USAGE_DOUBT = "/doubt {source[optional]} {target}"
+USAGE_TRUST = "/trust {source[optional]} {target}"
 
 ERROR_ROLE_NOT_FOUND = "role not found."
 ERROR_DUPLICATE_ROLE = "duplicate role."
@@ -37,7 +37,7 @@ DOUBT = 1
 G = nx.DiGraph()
 players = {}  # {discord.Member: Player}
 relations = {}  # {(discord.Member, discord.Member): int}
-plt.style.use('grey')
+plt.style.use("grey")
 plt.rcParams["font.family"] = "sans-serif"
 plt.rcParams["font.sans-serif"] = [
     "Hiragino Maru Gothic Pro",
@@ -135,19 +135,6 @@ def get_usage(usage: str, error: str = None) -> discord.Embed:
     return embed
 
 
-def has_duplicates(seq: list) -> bool:
-    return len(seq) != len(set(seq))
-
-
-def update_attendees(func):
-    def wrapper(*args, **kwargs):
-        # ctx.g
-        # attendees ロールのついている人をみてplayersを更新
-        func(*args, **kwargs)
-
-    return wrapper
-
-
 def is_attendee(member: discord.Member) -> bool:
     for r in member.roles:
         if r.name == "attendees":
@@ -172,6 +159,40 @@ def find_attendee_by_role(
             if role_name == r.name:
                 attendee = a
     return attendee
+
+
+async def draw_relation(
+    ctx: commands.Context,
+    first_role: discord.Role,
+    second_role: Optional[discord.Role],
+    relation_type: int,
+):
+    if first_role == second_role:
+        raise DuplicateRoleError
+    members = [i async for i in ctx.guild.fetch_members(limit=150) if not i.bot]
+    attendees = [i for i in members if is_attendee(i)]
+    for a in attendees:
+        role = [i for i in a.roles if i.name != "@everyone" and i.name != "attendees"][0]
+        players[a] = Player(a.name, role.name)
+    if not second_role:
+        source: Optional[discord.Member] = discord.utils.find(
+            lambda m: m.name == ctx.author.name, attendees
+        )
+        target: Optional[discord.Member] = find_attendee_by_role(
+            attendees, first_role.name
+        )
+    else:
+        source: Optional[discord.Member] = find_attendee_by_role(
+            attendees, first_role.name
+        )
+        target: Optional[discord.Member] = find_attendee_by_role(
+            attendees, second_role.name
+        )
+    if not source or not target:
+        raise NotAttendeeError
+    add_relation(source, target, relation_type)
+    await ctx.send(file=draw_graph())
+    return
 
 
 class Assistant(commands.Cog):
@@ -203,80 +224,39 @@ class Assistant(commands.Cog):
 
     @commands.command()
     async def trust(
-        self, ctx, first_role: discord.Role, second_role: discord.Role = None
+        self, ctx: commands.Context, first_role: discord.Role, second_role: discord.Role = None
     ):
-        if first_role == second_role:
-            raise DuplicateRoleError
-        # TODO decorator化
-        members = [i async for i in ctx.guild.fetch_members(limit=150) if not i.bot]
-        attendees = [i for i in members if is_attendee(i)]
-        for a in attendees:
-            role = [
-                i for i in a.roles if i.name != "@everyone" and i.name != "attendees"
-            ][0]
-            players[a] = Player(a.name, role.name)
-        if not second_role:
-            source: Optional[discord.Member] = discord.utils.find(
-                lambda m: m.name == ctx.author.name, attendees
-            )
-            target: Optional[discord.Member] = find_attendee_by_role(
-                attendees, first_role.name
-            )
-        else:
-            source: Optional[discord.Member] = find_attendee_by_role(
-                attendees, first_role.name
-            )
-            target: Optional[discord.Member] = find_attendee_by_role(
-                attendees, second_role.name
-            )
-        if not source or not target:
-            raise NotAttendeeError
-        add_relation(source, target, TRUST)
-        await ctx.send(file=draw_graph())
+        try:
+            await draw_relation(ctx, first_role, second_role, TRUST)
+        except Exception as e:
+            raise e
         return
 
     @commands.command()
     async def doubt(
-        self, ctx, first_role: discord.Role, second_role: discord.Role = None
+        self, ctx: commands.Context, first_role: discord.Role, second_role: discord.Role = None
     ):
-        if first_role == second_role:
-            raise DuplicateRoleError
-        # TODO decorator化
-        members = [i async for i in ctx.guild.fetch_members(limit=150) if not i.bot]
-        attendees = [i for i in members if is_attendee(i)]
-        for a in attendees:
-            role = [
-                i for i in a.roles if i.name != "@everyone" and i.name != "attendees"
-            ][0]
-            players[a] = Player(a.name, role.name)
-        if not second_role:
-            source: Optional[discord.Member] = discord.utils.find(
-                lambda m: m.name == ctx.author.name, attendees
-            )
-            target: Optional[discord.Member] = find_attendee_by_role(
-                attendees, first_role.name
-            )
-        else:
-            source: Optional[discord.Member] = find_attendee_by_role(
-                attendees, first_role.name
-            )
-            target: Optional[discord.Member] = find_attendee_by_role(
-                attendees, second_role.name
-            )
-        if not source or not target:
-            raise NotAttendeeError
-        add_relation(source, target, DOUBT)
-        await ctx.send(file=draw_graph())
+        try:
+            await draw_relation(ctx, first_role, second_role, DOUBT)
+        except Exception as e:
+            raise e
         return
 
     @doubt.error
-    @trust.error
     async def doubt_error(self, ctx: commands.Context, error):
         print(type(error))
         if isinstance(error, commands.BadArgument):
             await ctx.send(embed=get_usage(USAGE_DOUBT, str(error)))
         if isinstance(error, commands.CommandInvokeError):
             await ctx.send(embed=get_usage(USAGE_DOUBT, str(error)))
+
+    @trust.error
+    async def trust_error(self, ctx: commands.Context, error):
+        print(type(error))
+        if isinstance(error, commands.BadArgument):
+            await ctx.send(embed=get_usage(USAGE_TRUST, str(error)))
+        if isinstance(error, commands.CommandInvokeError):
+            await ctx.send(embed=get_usage(USAGE_TRUST, str(error)))
 
 
 def setup(bot: commands.Bot) -> None:
