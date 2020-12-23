@@ -94,20 +94,17 @@ def draw_graph() -> discord.File:
     グラフ描画
     """
     plt.clf()
-    edges = []
-    for r in relations.keys():
-        edges.append(r)
-    nodes = []
     for p in players.values():
-        nodes.append(p)
-    G.add_nodes_from(nodes)
+        G.add_node(p)
+    for r, v in relations.items():
+        G.add_edge(r[0], r[1], color=v)
     for p in players.values():
-        if len([i for i in nx.neighbors(G, p)]) == 0:
+        if len([i for i in nx.DiGraph.successors(G, p)]) \
+                + len([i for i in nx.DiGraph.predecessors(G, p)]) == 0:
             G.remove_node(p)
-    G.add_edges_from(edges)
     options = {
-        "node_color": [node_color(player) for player in G.nodes()],
-        "edge_color": [edge_color(relation) for relation in relations.values()],
+        "node_color": [node_color(player) for player in G.nodes],
+        "edge_color": [edge_color(c) for c in nx.get_edge_attributes(G, "color").values()],
         "node_size": 800,
         "width": 2,
         "arrowstyle": "-|>",
