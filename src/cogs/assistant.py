@@ -36,7 +36,7 @@ DOUBT = 1
 
 G = nx.DiGraph()
 players = {}  # {discord.Member: Player}
-relations = {}  # {(discord.Member, discord.Member): int}
+relations = {}  # {(Player, Player): int}
 plt.style.use("grey")
 plt.rcParams["font.family"] = "sans-serif"
 plt.rcParams["font.sans-serif"] = [
@@ -204,16 +204,8 @@ class Assistant(commands.Cog):
     async def clear(self, ctx, *args):
         global players
         global relations
+        G.clear()
         plt.clf()
-        edges = []
-        nodes = []
-        for r in relations.keys():
-            edges.append(r)
-        nodes = []
-        for p in players.values():
-            nodes.append(p)
-        G.remove_edges_from(edges)
-        G.remove_nodes_from(nodes)
         players = {}
         relations = {}
         embed = discord.Embed(
