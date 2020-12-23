@@ -4,3 +4,7 @@ class NotAttendeeError(Exception):
 
 class DuplicateRoleError(Exception):
     pass
+
+
+class NoSuchRelationError(Exception):
+    pass

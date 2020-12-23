@@ -4,7 +4,7 @@ import discord
 import matplotlib.pyplot as plt
 import networkx as nx
 from discord.ext import commands
-from error import DuplicateRoleError, NotAttendeeError
+from error import DuplicateRoleError, NotAttendeeError, NoSuchRelationError
 from networkx.drawing.nx_agraph import graphviz_layout
 
 
@@ -19,9 +19,15 @@ class Player:
     def __hash__(self):
         return hash(self.name)
 
+    def __eq__(self, other):
+        if not isinstance(other, Player):
+            return NotImplemented
+        return self is other
 
-USAGE_DOUBT = "/doubt {source[optional]} {target}"
-USAGE_TRUST = "/trust {source[optional]} {target}"
+
+USAGE_DOUBT = "/doubt {source(optional)} {target}"
+USAGE_TRUST = "/trust {source(optional)} {target}"
+USAGE_CLEAR = "/clear [all|{source (optional)} {target}]"
 
 ERROR_ROLE_NOT_FOUND = "role not found."
 ERROR_DUPLICATE_ROLE = "duplicate role."
@@ -37,6 +43,8 @@ DOUBT = 1
 G = nx.DiGraph()
 players = {}  # {discord.Member: Player}
 relations = {}  # {(Player, Player): int}
+members = []
+attendees = []
 plt.style.use("grey")
 plt.rcParams["font.family"] = "sans-serif"
 plt.rcParams["font.sans-serif"] = [
@@ -161,19 +169,16 @@ def find_attendee_by_role(
     return attendee
 
 
-async def draw_relation(
-    ctx: commands.Context,
-    first_role: discord.Role,
-    second_role: Optional[discord.Role],
-    relation_type: int,
-):
+async def parse_attendee(ctx: commands.Context, first_role: discord.Role, second_role: Optional[discord.Role] = None):
     if first_role == second_role:
         raise DuplicateRoleError
     members = [i async for i in ctx.guild.fetch_members(limit=150) if not i.bot]
     attendees = [i for i in members if is_attendee(i)]
     for a in attendees:
-        role = [i for i in a.roles if i.name != "@everyone" and i.name != "attendees"][0]
-        players[a] = Player(a.name, role.name)
+        role = [i for i in a.roles if i.name !=
+                "@everyone" and i.name != "attendees"][0]
+        if not players.get(a):
+            players[a] = Player(a.name, role.name)
     if not second_role:
         source: Optional[discord.Member] = discord.utils.find(
             lambda m: m.name == ctx.author.name, attendees
@@ -190,6 +195,19 @@ async def draw_relation(
         )
     if not source or not target:
         raise NotAttendeeError
+    return [source, target]
+
+
+async def draw_relation(
+    ctx: commands.Context,
+    first_role: discord.Role,
+    second_role: Optional[discord.Role],
+    relation_type: int,
+):
+    try:
+        [source, target] = await parse_attendee(ctx, first_role, second_role)
+    except Exception as e:
+        raise e
     add_relation(source, target, relation_type)
     await ctx.send(file=draw_graph())
     return
@@ -200,8 +218,18 @@ class Assistant(commands.Cog):
     async def name(self, ctx, *args):
         pass
 
-    @commands.command()
-    async def clear(self, ctx, *args):
+    @commands.group(pass_context=True, invoke_without_command=True)
+    async def clear(self, ctx, first_role: discord.Role, second_role: discord.Role = None):
+        [source, target] = await parse_attendee(ctx, first_role, second_role)
+        try:
+            del relations[(players[source], players[target])]
+        except:
+            raise NoSuchRelationError
+        await ctx.send(file=draw_graph())
+        return
+
+    @clear.group()
+    async def all(self, ctx):
         global players
         global relations
         G.clear()
@@ -234,6 +262,12 @@ class Assistant(commands.Cog):
             raise e
         return
 
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        if isinstance(error, commands.CommandNotFound):
+            print("HERE")
+            commands.HelpCommand()
+
     @doubt.error
     async def doubt_error(self, ctx: commands.Context, error):
         print(type(error))
@@ -249,6 +283,13 @@ class Assistant(commands.Cog):
             await ctx.send(embed=get_usage(USAGE_TRUST, str(error)))
         if isinstance(error, commands.CommandInvokeError):
             await ctx.send(embed=get_usage(USAGE_TRUST, str(error)))
+
+    @clear.error
+    async def clear_error(self, ctx: commands.Context, error):
+        if isinstance(error, commands.BadArgument):
+            await ctx.send(embed=get_usage(USAGE_CLEAR, str(error)))
+        if isinstance(error, commands.CommandInvokeError):
+            await ctx.send(embed=get_usage(USAGE_CLEAR, str(error)))
 
 
 def setup(bot: commands.Bot) -> None:
