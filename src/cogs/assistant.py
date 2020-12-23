@@ -25,20 +25,6 @@ class Player:
         return self is other
 
 
-"""
-USAGE_DOUBT = "/doubt {source(optional)} {target}"
-USAGE_TRUST = "/trust {source(optional)} {target}"
-USAGE_CLEAR = "/clear [all|{source (optional)} {target}]"
-
-ERROR_ROLE_NOT_FOUND = "role not found."
-ERROR_DUPLICATE_ROLE = "duplicate role."
-ERROR_TOO_FEW_ARGUMENTS = "too few arguments."
-ERROR_TOO_MANY_ARGUMENTS = "too many arguments."
-ERROR_NOT_ATTENDEE = "specified member is not attendee."
-ERROR_BAD_ARGUMENT = "bad argument."
-ERROR_COMMAND_INVOKE = "command invoke error."
-"""
-
 TRUST = 0
 DOUBT = 1
 
@@ -139,17 +125,6 @@ def draw_graph() -> discord.File:
 def get_error_embed(error: str) -> discord.Embed:
     embed = discord.Embed(title=":x:Error", description=error, color=0xFF0000)
     return embed
-
-
-"""
-def get_usage(usage: str, error: str = None) -> discord.Embed:
-    if error:
-        embed = discord.Embed(title="Error", description=error, color=0xFF0000)
-        embed.add_field(name="usage", value=usage)
-    else:
-        embed = discord.Embed(title="usage", description=usage, color=0x00FF00)
-    return embed
-"""
 
 
 def is_attendee(member: discord.Member) -> bool:
@@ -277,8 +252,8 @@ class Assistant(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command()
-    async def stat(self, ctx, *args, brief="take stats."):
+    @commands.command(brief="take stats.")
+    async def stat(self, ctx, *args):
         [doubt_formatted, trust_formatted] = create_statistics(ctx)
         embed = discord.Embed(
             title=":chart_with_upwards_trend:statistics", color=0x359cad)
@@ -340,32 +315,6 @@ class Assistant(commands.Cog):
         else:
             await ctx.send(embed=get_error_embed(str(error)))
             print(ctx.invoked_with)
-
-    """
-    @doubt.error
-    async def doubt_error(self, ctx: commands.Context, error):
-        print(type(error))
-        if isinstance(error, commands.BadArgument):
-            await ctx.send(embed=get_usage(USAGE_DOUBT, str(error)))
-        if isinstance(error, commands.CommandInvokeError):
-            await ctx.send(embed=get_usage(USAGE_DOUBT, str(error)))
-
-    @trust.error
-    async def trust_error(self, ctx: commands.Context, error):
-        print(type(error))
-        if isinstance(error, commands.BadArgument):
-            await ctx.send(embed=get_usage(USAGE_TRUST, str(error)))
-        if isinstance(error, commands.CommandInvokeError):
-            await ctx.send(embed=get_usage(USAGE_TRUST, str(error)))
-
-    @clear.error
-    async def clear_error(self, ctx: commands.Context, error):
-        if isinstance(error, commands.BadArgument):
-            await ctx.send(embed=get_usage(USAGE_CLEAR, str(error)))
-        if isinstance(error, commands.CommandInvokeError):
-            await ctx.send(embed=get_usage(USAGE_CLEAR, str(error)))
-    # MissingRequiredArgument
-    """
 
 
 def setup(bot: commands.Bot) -> None:
