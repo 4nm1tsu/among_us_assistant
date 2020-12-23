@@ -4,7 +4,7 @@ import discord
 import matplotlib.pyplot as plt
 import networkx as nx
 from discord.ext import commands
-from error import DuplicateRoleError, NotAttendeeError, NoSuchRelationError
+from error import DuplicateRoleError, NotAttendeeError, NoSuchRelationError, SpecifyYourselfError
 from networkx.drawing.nx_agraph import graphviz_layout
 
 
@@ -137,7 +137,7 @@ def draw_graph() -> discord.File:
 
 
 def get_error_embed(error: str) -> discord.Embed:
-    embed = discord.Embed(title="Error", description=error, color=0xFF0000)
+    embed = discord.Embed(title=":x:Error", description=error, color=0xFF0000)
     return embed
 
 
@@ -207,7 +207,7 @@ async def parse_attendee(
             attendees, second_role.name
         )
     if not second_role:
-    # 引数1つかつ自分がnot attendee → author
+        # 引数1つかつ自分がnot attendee → author
         if not source:
             role = [i for i in ctx.author.roles if i.name !=
                     "@everyone" and i.name != "attendees"][0]
@@ -216,13 +216,46 @@ async def parse_attendee(
         if not target:
             raise NotAttendeeError(first_role.name)
     else:
-    # 引数2つかつ自分がnot attendee → first_role
+        # 引数2つかつ自分がnot attendee → first_role
         if not source:
             raise NotAttendeeError(first_role.name)
     # 引数2つかつ相手がnot attendee → second_role
         if not target:
             raise NotAttendeeError(second_role.name)
+    if source == target:
+        raise SpecifyYourselfError()
     return [source, target]
+
+
+def create_statistics(ctx, limit=3):
+    result = []
+    for i, player in enumerate(G.nodes):
+        result.append({
+            "name": player.name,
+            "role": player.color,
+            "doubt": 0,
+            "trust": 0
+        })
+        for e in G.in_edges(player):
+            if relations[e] == DOUBT:
+                result[i]["doubt"] += 1
+            else:
+                result[i]["trust"] += 1
+    doubt_sorted = sorted(result, key=lambda x: x["doubt"], reverse=True)
+    trust_sorted = sorted(result, key=lambda x: x["trust"], reverse=True)
+    doubt_formatted = []
+    trust_formatted = []
+    for i, d in enumerate(doubt_sorted):
+        if i >= limit:
+            break
+        emoji = discord.utils.get(ctx.guild.emojis, name=d['role'])
+        doubt_formatted.append(f"{i+1}:{emoji}{d['name']}[{d['doubt']}]")
+    for i, t in enumerate(trust_sorted):
+        if i >= limit:
+            break
+        emoji = discord.utils.get(ctx.guild.emojis, name=t['role'])
+        trust_formatted.append(f"{i+1}:{emoji}{t['name']}[{t['trust']}]")
+    return [doubt_formatted, trust_formatted]
 
 
 async def draw_relation(
@@ -245,8 +278,16 @@ class Assistant(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def name(self, ctx, *args):
-        pass
+    async def stat(self, ctx, *args, brief="take stats."):
+        [doubt_formatted, trust_formatted] = create_statistics(ctx)
+        embed = discord.Embed(
+            title=":chart_with_upwards_trend:statistics", color=0x359cad)
+        embed.add_field(name=":detective:doubtful",
+                        value="\n".join(doubt_formatted), inline=True)
+        embed.add_field(name=":man_tipping_hand:innocent",
+                        value="\n".join(trust_formatted), inline=True)
+        await ctx.send(embed=embed)
+        return
 
     @commands.group(pass_context=True, invoke_without_command=True, brief="remove arrow from graph.")
     async def clear(self, ctx, first_role: discord.Role, second_role: discord.Role = None):

@@ -16,3 +16,7 @@ class NoSuchRelationError(Exception):
     def __str__(self):
         return "no such relation."
     pass
+
+class SpecifyYourselfError(Exception):
+    def __str__(self):
+        return "don't specify yourself as a target."
