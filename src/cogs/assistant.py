@@ -4,8 +4,15 @@ import discord
 import matplotlib.pyplot as plt
 import networkx as nx
 from discord.ext import commands
-from error import DuplicateRoleError, NotAttendeeError, NoSuchRelationError, SpecifyYourselfError, NoPlayerError
 from networkx.drawing.nx_agraph import graphviz_layout
+
+from error import (
+    DuplicateRoleError,
+    NoPlayerError,
+    NoSuchRelationError,
+    NotAttendeeError,
+    SpecifyYourselfError,
+)
 
 
 class Player:
@@ -99,12 +106,17 @@ def draw_graph() -> discord.File:
     for r, v in relations.items():
         G.add_edge(r[0], r[1], color=v)
     for p in players.values():
-        if len([i for i in nx.DiGraph.successors(G, p)]) \
-                + len([i for i in nx.DiGraph.predecessors(G, p)]) == 0:
+        if (
+            len([i for i in nx.DiGraph.successors(G, p)])
+            + len([i for i in nx.DiGraph.predecessors(G, p)])
+            == 0
+        ):
             G.remove_node(p)
     options = {
         "node_color": [node_color(player) for player in G.nodes],
-        "edge_color": [edge_color(c) for c in nx.get_edge_attributes(G, "color").values()],
+        "edge_color": [
+            edge_color(c) for c in nx.get_edge_attributes(G, "color").values()
+        ],
         "node_size": 800,
         "width": 2,
         "arrowstyle": "-|>",
@@ -153,15 +165,16 @@ def find_attendee_by_role(
 async def parse_attendee(
     ctx: commands.Context,
     first_role: discord.Role,
-    second_role: Optional[discord.Role] = None
+    second_role: Optional[discord.Role] = None,
 ):
     if first_role == second_role:
         raise DuplicateRoleError
     members = [i async for i in ctx.guild.fetch_members(limit=150) if not i.bot]
     attendees = [i for i in members if is_attendee(i)]
     for a in attendees:
-        role = [i for i in a.roles if i.name !=
-                "@everyone" and i.name != "attendees"][0]
+        role = [i for i in a.roles if i.name != "@everyone" and i.name != "attendees"][
+            0
+        ]
         if not players.get(a):
             players[a] = Player(a.name, role.name)
     if not second_role:
@@ -181,17 +194,20 @@ async def parse_attendee(
     if not second_role:
         # 引数1つかつ自分がnot attendee → author
         if not source:
-            role = [i for i in ctx.author.roles if i.name !=
-                    "@everyone" and i.name != "attendees"][0]
+            role = [
+                i
+                for i in ctx.author.roles
+                if i.name != "@everyone" and i.name != "attendees"
+            ][0]
             raise NotAttendeeError(role.name)
-    # 引数1つかつ相手がnot attendee → first_role
+        # 引数1つかつ相手がnot attendee → first_role
         if not target:
             raise NotAttendeeError(first_role.name)
     else:
         # 引数2つかつ自分がnot attendee → first_role
         if not source:
             raise NotAttendeeError(first_role.name)
-    # 引数2つかつ相手がnot attendee → second_role
+        # 引数2つかつ相手がnot attendee → second_role
         if not target:
             raise NotAttendeeError(second_role.name)
     if source == target:
@@ -202,12 +218,9 @@ async def parse_attendee(
 def create_statistics(ctx, limit=3):
     result = []
     for i, player in enumerate(G.nodes):
-        result.append({
-            "name": player.name,
-            "role": player.color,
-            "doubt": 0,
-            "trust": 0
-        })
+        result.append(
+            {"name": player.name, "role": player.color, "doubt": 0, "trust": 0}
+        )
         for e in G.in_edges(player):
             if relations[e] == DOUBT:
                 result[i]["doubt"] += 1
@@ -220,12 +233,12 @@ def create_statistics(ctx, limit=3):
     for i, d in enumerate(doubt_sorted):
         if i >= limit:
             break
-        emoji = discord.utils.get(ctx.guild.emojis, name=d['role'])
+        emoji = discord.utils.get(ctx.guild.emojis, name=d["role"])
         doubt_formatted.append(f"{i+1}:{emoji}{d['name']}[{d['doubt']}]")
     for i, t in enumerate(trust_sorted):
         if i >= limit:
             break
-        emoji = discord.utils.get(ctx.guild.emojis, name=t['role'])
+        emoji = discord.utils.get(ctx.guild.emojis, name=t["role"])
         trust_formatted.append(f"{i+1}:{emoji}{t['name']}[{t['trust']}]")
     return [doubt_formatted, trust_formatted]
 
@@ -252,25 +265,33 @@ class Assistant(commands.Cog):
     @commands.command(brief="take stats.")
     async def stat(self, ctx, *args):
         [doubt_formatted, trust_formatted] = create_statistics(ctx)
-        if not doubt_formatted \
-            or not trust_formatted:
+        if not doubt_formatted or not trust_formatted:
             raise NoPlayerError
         embed = discord.Embed(
-            title=":chart_with_upwards_trend:statistics", color=0x359cad)
-        embed.add_field(name=":detective:doubtful",
-                        value="\n".join(doubt_formatted), inline=True)
-        embed.add_field(name=":man_tipping_hand:innocent",
-                        value="\n".join(trust_formatted), inline=True)
+            title=":chart_with_upwards_trend:statistics", color=0x359CAD
+        )
+        embed.add_field(
+            name=":detective:doubtful", value="\n".join(doubt_formatted), inline=True
+        )
+        embed.add_field(
+            name=":man_tipping_hand:innocent",
+            value="\n".join(trust_formatted),
+            inline=True,
+        )
         await ctx.send(embed=embed)
         return
 
-    @commands.group(pass_context=True, invoke_without_command=True, brief="remove arrow from graph.")
-    async def clear(self, ctx, first_role: discord.Role, second_role: discord.Role = None):
+    @commands.group(
+        pass_context=True, invoke_without_command=True, brief="remove arrow from graph."
+    )
+    async def clear(
+        self, ctx, first_role: discord.Role, second_role: discord.Role = None
+    ):
         [source, target] = await parse_attendee(ctx, first_role, second_role)
         try:
             del relations[(players[source], players[target])]
             G.remove_edge(players[source], players[target])
-        except:
+        except Exception:
             raise NoSuchRelationError
 
         await ctx.send(file=draw_graph())
@@ -292,7 +313,10 @@ class Assistant(commands.Cog):
 
     @commands.command(brief="draw trust arrow to specified target.")
     async def trust(
-        self, ctx: commands.Context, first_role: discord.Role, second_role: discord.Role = None
+        self,
+        ctx: commands.Context,
+        first_role: discord.Role,
+        second_role: discord.Role = None,
     ):
         try:
             await draw_relation(ctx, first_role, second_role, TRUST)
@@ -302,7 +326,10 @@ class Assistant(commands.Cog):
 
     @commands.command(brief="draw doubt arrow to specified target.")
     async def doubt(
-        self, ctx: commands.Context, first_role: discord.Role, second_role: discord.Role = None
+        self,
+        ctx: commands.Context,
+        first_role: discord.Role,
+        second_role: discord.Role = None,
     ):
         try:
             await draw_relation(ctx, first_role, second_role, DOUBT)

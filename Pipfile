@@ -15,9 +15,11 @@ matplotlib = "*"
 [dev-packages]
 black = "*"
 flake8 = "*"
-flake8-import-order = "*"
 autopep8 = "*"
-isort = "*"
+isort = {extras = ["pyproject"], version = "*"}
 
 [requires]
 python_version = "3.8"
+
+[scripts]
+start = "python src/bot.py"
