@@ -17,7 +17,3 @@ async def on_ready():
 
 
 bot.run(os.environ["BOT_TOKEN"])
-# TODO 例外処理をdiscord.pyのビルトインで
-# TODO unknown command
-# TODO command not found
-# TODO 自分をtargetにしたとき
